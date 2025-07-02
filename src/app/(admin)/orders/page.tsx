@@ -1,18 +1,17 @@
 import { cookies } from "next/headers";
 import { getOrders_Server } from "@/lib/api";
+import OrdersPageClient from "@/components/features/order/OrdersPageClient";
 import { Order } from "@/types";
-
-import OrdersPageClient from "./OrdersPageClient";
 
 export default async function OrdersPage() {
   let orders: Order[] = [];
   let error: string | null = null;
 
+  const cookieStore = cookies();
+  const token = cookieStore.get("authToken")?.value;
+
   try {
-    const cookieStore = cookies();
-    const token = cookieStore.get("authToken")?.value;
-    if (!token) throw new Error("Yêu cầu xác thực. Vui lòng đăng nhập lại.");
-    orders = await getOrders_Server(token);
+    orders = await getOrders_Server(token || "");
   } catch (err) {
     error =
       err instanceof Error
@@ -29,6 +28,5 @@ export default async function OrdersPage() {
     );
   }
 
-  // Truyền orders sang client component để filter
   return <OrdersPageClient orders={orders} />;
 }

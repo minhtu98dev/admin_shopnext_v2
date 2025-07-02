@@ -100,3 +100,4 @@ export const updateProduct = async (productId: string, productData: ProductFormD
   return response.json();
 };
 
+

@@ -2,6 +2,7 @@
 
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { revalidateTag  } from 'next/cache'; // <-- BƯỚC 1: IMPORT
 
 const BACKEND_API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -19,6 +20,7 @@ export async function DELETE(
       return NextResponse.json({ message: 'Chưa xác thực' }, { status: 401 });
     }
 
+    // Gọi đến backend thật để xóa
     const apiRes = await fetch(`${BACKEND_API_URL}/orders/${orderId}`, {
       method: 'DELETE',
       headers: {
@@ -31,6 +33,12 @@ export async function DELETE(
       throw new Error(errorData.message || 'Xóa đơn hàng từ backend thất bại');
     }
 
+    // =======================================================
+    // BƯỚC 2: RA LỆNH XÓA CACHE SAU KHI THÀNH CÔNG
+    // Đây là dòng quan trọng nhất để router.refresh() hoạt động
+    revalidateTag('orders'); 
+    // =======================================================
+
     const successData = await apiRes.json();
     return NextResponse.json({ message: successData.message || 'Xóa đơn hàng thành công' });
 
@@ -39,9 +47,3 @@ export async function DELETE(
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
-
-// Bạn có thể giữ hàm GET ở đây để dùng sau này cho trang chi tiết
-// export async function GET(request: Request, { params }: { params: { id: string } }) {
-//   // Logic lấy chi tiết một đơn hàng
-// }
-

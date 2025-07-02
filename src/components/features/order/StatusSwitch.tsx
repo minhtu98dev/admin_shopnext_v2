@@ -31,7 +31,7 @@ export default function StatusSwitch({ order, type }: StatusSwitchProps) {
     toast.promise(updatePromise, {
       loading: "Đang cập nhật...",
       success: () => {
-        router.refresh(); // Tải lại dữ liệu trang để cập nhật UI
+        router.refresh();
         return "Cập nhật trạng thái thành công!";
       },
       error: (err) => err.message,

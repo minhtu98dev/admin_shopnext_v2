@@ -67,9 +67,6 @@ export default function OrdersPageClient({ orders }: { orders: Order[] }) {
     <div className="p-4 sm:p-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Quản lý Đơn hàng</h1>
-        <span className="font-medium text-gray-600">
-          Tổng số: {filteredOrders.length} đơn
-        </span>
       </div>
       <OrderFilterBar onFilterChange={handleFilterChange} />
       <OrderTable orders={filteredOrders} />

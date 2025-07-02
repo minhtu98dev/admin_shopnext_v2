@@ -2,163 +2,207 @@
 
 import { Order, Product, User } from "@/types";
 
+// ======================
+// === CONFIG BACKEND ===
+// ======================
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 if (!API_BASE_URL) {
-  throw new Error("Vui lòng định nghĩa NEXT_PUBLIC_API_URL trong file .env.local");
+  throw new Error(
+    "⚠️ Vui lòng định nghĩa biến môi trường NEXT_PUBLIC_API_URL trong file .env.local"
+  );
 }
 
-// =======================
+// =========================
 // === PRODUCT FUNCTIONS ===
-// =======================
+// =========================
 
 /**
- * Lấy danh sách tất cả sản phẩm từ backend.
- * Không yêu cầu xác thực.
+ * Lấy danh sách sản phẩm từ backend, hỗ trợ phân trang.
+ * @param page Số trang (bắt đầu từ 1)
+ * @param limit Số sản phẩm mỗi trang
+ * @returns Object gồm { products, total }
  */
-export const getProducts_Server = async (): Promise<Product[]> => {
-  const response = await fetch(`${API_BASE_URL}/products`, {
-    cache: 'no-store', // Luôn lấy dữ liệu mới nhất
-  });
+export const getProducts_Server = async ({
+  page,
+  limit,
+}: {
+  page: number;
+  limit: number;
+}): Promise<{ products: Product[]; total: number }> => {
+  const response = await fetch(
+    `${API_BASE_URL}/products?pageNumber=${page}&limit=${limit}`,
+    { cache: 'no-store' }
+  );
 
   if (!response.ok) {
     throw new Error('Không thể lấy dữ liệu sản phẩm');
   }
 
   const data = await response.json();
-  // Backend có thể trả về { products: [...] } hoặc chỉ [...]
-  return data.products || data;
+
+  return {
+    products: data.products,
+    total: data.total,
+  };
 };
 
-/**
- * Lấy chi tiết một sản phẩm bằng ID từ backend.
- * Không yêu cầu xác thực.
- */
-export const getProductById_Server = async (id: string): Promise<Product> => {
-  const response = await fetch(`${API_BASE_URL}/products/${id}`, {
-    cache: 'no-store',
+// Hàm A — Cho Dashboard (LẤY TẤT CẢ)
+export const getAllProducts_Server = async (): Promise<Product[]> => {
+  const res = await fetch(`${API_BASE_URL}/products`, {
+    cache: "no-store",
   });
 
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error("Không tìm thấy sản phẩm.");
-    }
-    throw new Error('Không thể lấy dữ liệu sản phẩm');
+  if (!res.ok) {
+    throw new Error("Không thể lấy dữ liệu sản phẩm");
   }
 
-  return response.json();
+  const data = await res.json();
+  return data.products || [];
+};
+/**
+ * Lấy chi tiết 1 sản phẩm theo ID.
+ */
+export const getProductById_Server = async (
+  id: string
+): Promise<Product> => {
+  const res = await fetch(`${API_BASE_URL}/products/${id}`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error("❌ Không tìm thấy sản phẩm.");
+    }
+    throw new Error("❌ Không thể lấy dữ liệu sản phẩm");
+  }
+
+  return res.json();
 };
 
-
-// =====================
+// =======================
 // === ORDER FUNCTIONS ===
-// =====================
+// =======================
 
 /**
- * Lấy danh sách tất cả đơn hàng từ backend.
- * Yêu cầu token xác thực của Admin.
+ * Lấy danh sách tất cả đơn hàng.
+ * Yêu cầu token Admin.
  */
 export const getOrders_Server = async (token: string): Promise<Order[]> => {
-  const response = await fetch(`${API_BASE_URL}/orders`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error('Không thể lấy dữ liệu đơn hàng');
+  if (!token) {
+    throw new Error("Token không tồn tại — Vui lòng đăng nhập lại.");
   }
 
-  const data = await response.json();
-  return data.orders || data;
-};
-
-/**
- * Lấy chi tiết một đơn hàng bằng ID từ backend.
- * Yêu cầu token xác thực.
- */
-export const getOrderById_Server = async (id: string, token: string): Promise<Order> => {
-  // --- BẮT ĐẦU PHẦN DEBUG ---
-  console.log('--- [DEBUG] Đang thực thi getOrderById_Server ---');
-  console.log(`- Yêu cầu lấy đơn hàng với ID: ${id}`);
-  // In ra một phần token để kiểm tra nó có tồn tại hay không, nhưng không lộ toàn bộ
-  console.log(`- Token được sử dụng: ${token ? `Bearer ${token.slice(0, 15)}...` : '!!! KHÔNG CÓ TOKEN !!!'}`);
-  // --- KẾT THÚC PHẦN DEBUG ---
-
-  const response = await fetch(`${API_BASE_URL}/orders/${id}`, {
-    headers: { 
-      'Authorization': `Bearer ${token}` 
-    },
-    cache: 'no-store',
+  const response = await fetch(`${API_BASE_URL}/orders`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
   });
 
-  // In ra status code trả về từ backend
-  console.log(`- Backend đã trả về Status Code: ${response.status}`);
-
   if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Lỗi HTTP 401: Unauthorized - Backend từ chối token.');
-    }
-    if (response.status === 404) {
-      throw new Error("Không tìm thấy đơn hàng trên backend.");
-    }
-    throw new Error('Không thể lấy dữ liệu chi tiết đơn hàng');
+    throw new Error("Không thể lấy dữ liệu đơn hàng");
   }
 
   return response.json();
 };
-
 /**
- * Lấy tất cả đơn hàng của một người dùng cụ thể từ backend.
- * Yêu cầu token xác thực của Admin.
+ * Lấy chi tiết 1 đơn hàng.
+ * Yêu cầu token.
  */
-export const getOrdersByUserId_Server = async (userId: string, token: string): Promise<Order[]> => {
-  const response = await fetch(`${API_BASE_URL}/orders/user/${userId}`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-    cache: 'no-store',
+export const getOrderById_Server = async (
+  id: string,
+  token: string
+): Promise<Order> => {
+  console.log(`🔍 Đang lấy Order ID: ${id}`);
+  console.log(
+    `🔑 Token: ${token ? `Bearer ${token.slice(0, 10)}...` : "❌ Không có"}`
+  );
+
+  const res = await fetch(`${API_BASE_URL}/orders/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
   });
 
-  if (!response.ok) {
-    throw new Error('Không thể lấy danh sách đơn hàng của người dùng');
+  console.log(`✅ Status Code: ${res.status}`);
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error("❌ 401 Unauthorized - Token không hợp lệ");
+    }
+    if (res.status === 404) {
+      throw new Error("❌ Không tìm thấy đơn hàng");
+    }
+    throw new Error("❌ Không thể lấy chi tiết đơn hàng");
   }
 
-  const data = await response.json();
-  return data.orders || data;
+  return res.json();
 };
 
+/**
+ * Lấy tất cả đơn hàng của 1 user.
+ * Yêu cầu token Admin.
+ */
+export const getOrdersByUserId_Server = async (
+  userId: string,
+  token: string
+): Promise<Order[]> => {
+  const res = await fetch(`${API_BASE_URL}/orders/user/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
 
-// ====================
+  if (!res.ok) {
+    throw new Error("❌ Không thể lấy danh sách đơn hàng của người dùng");
+  }
+
+  const data = await res.json();
+  return data.orders || [];
+};
+
+// ======================
 // === USER FUNCTIONS ===
-// ====================
+// ======================
 
 /**
- * Lấy danh sách tất cả người dùng từ backend.
- * Yêu cầu token xác thực của Admin.
+ * Lấy danh sách tất cả user.
+ * Yêu cầu token Admin.
  */
 export const getUsers_Server = async (token: string): Promise<User[]> => {
-  const response = await fetch(`${API_BASE_URL}/auth`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-    cache: 'no-store',
+  const res = await fetch(`${API_BASE_URL}/auth`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
   });
 
-  if (!response.ok) {
-    throw new Error('Không thể lấy dữ liệu người dùng');
+  if (!res.ok) {
+    throw new Error("❌ Không thể lấy danh sách người dùng");
   }
 
-  return response.json();
+  return res.json();
 };
 
 /**
- * Lấy chi tiết một người dùng bằng ID từ backend.
- * Yêu cầu token xác thực của Admin.
+ * Lấy chi tiết user theo ID.
+ * Yêu cầu token Admin.
  */
-export const getUserById_Server = async (userId: string, token: string): Promise<User> => {
-  const response = await fetch(`${API_BASE_URL}/auth/${userId}`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-    cache: 'no-store',
+export const getUserById_Server = async (
+  userId: string,
+  token: string
+): Promise<User> => {
+  const res = await fetch(`${API_BASE_URL}/auth/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
   });
 
-  if (!response.ok) {
-    throw new Error('Không thể lấy dữ liệu người dùng');
+  if (!res.ok) {
+    throw new Error("❌ Không thể lấy thông tin người dùng");
   }
 
-  return response.json();
+  return res.json();
 };
